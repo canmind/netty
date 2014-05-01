@@ -16,6 +16,7 @@
 package io.netty.channel;
 
 import io.netty.util.concurrent.ExecutorFactory;
+import io.netty.util.metrics.MetricsCollector;
 import io.netty.util.concurrent.MultithreadEventExecutorGroup;
 import io.netty.util.internal.SystemPropertyUtil;
 import io.netty.util.internal.logging.InternalLogger;
@@ -27,7 +28,8 @@ import java.util.concurrent.Executor;
  * Abstract base class for {@link EventLoopGroup} implementations that handle their tasks with multiple threads at
  * the same time.
  */
-public abstract class MultithreadEventLoopGroup extends MultithreadEventExecutorGroup implements EventLoopGroup {
+public abstract class MultithreadEventLoopGroup
+        extends MultithreadEventExecutorGroup<EventLoop> implements EventLoopGroup {
 
     private static final InternalLogger logger = InternalLoggerFactory.getInstance(MultithreadEventLoopGroup.class);
 
@@ -45,15 +47,16 @@ public abstract class MultithreadEventLoopGroup extends MultithreadEventExecutor
     /**
      * @see {@link MultithreadEventExecutorGroup#MultithreadEventExecutorGroup(int, Executor, Object...)}
      */
-    protected MultithreadEventLoopGroup(int nEventLoops, Executor executor, Object... args) {
-        super(nEventLoops == 0 ? DEFAULT_EVENT_LOOP_THREADS : nEventLoops, executor, args);
+    protected MultithreadEventLoopGroup(int nEventLoops, Executor executor, EventLoopChooser chooser, Object... args) {
+        super(nEventLoops == 0 ? DEFAULT_EVENT_LOOP_THREADS : nEventLoops, executor, chooser, args);
     }
 
     /**
      * @see {@link MultithreadEventExecutorGroup#MultithreadEventExecutorGroup(int, ExecutorFactory, Object...)}
      */
-    protected MultithreadEventLoopGroup(int nEventLoops, ExecutorFactory executorFactory, Object... args) {
-        super(nEventLoops == 0 ? DEFAULT_EVENT_LOOP_THREADS : nEventLoops, executorFactory, args);
+    protected MultithreadEventLoopGroup(
+            int nEventLoops, ExecutorFactory executorFactory, EventLoopChooser chooser, Object... args) {
+        super(nEventLoops == 0 ? DEFAULT_EVENT_LOOP_THREADS : nEventLoops, executorFactory, chooser, args);
     }
 
     @Override
@@ -62,7 +65,7 @@ public abstract class MultithreadEventLoopGroup extends MultithreadEventExecutor
     }
 
     @Override
-    protected abstract EventLoop newChild(Executor executor, Object... args) throws Exception;
+    protected abstract EventLoop newChild(Executor executor, MetricsCollector metrics, Object... args) throws Exception;
 
     @Override
     public ChannelFuture register(Channel channel) {

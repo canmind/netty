@@ -17,9 +17,11 @@ package io.netty.channel.nio;
 
 import io.netty.channel.Channel;
 import io.netty.channel.EventLoop;
+import io.netty.channel.EventLoopChooser;
 import io.netty.channel.MultithreadEventLoopGroup;
 import io.netty.util.concurrent.DefaultExecutorFactory;
 import io.netty.util.concurrent.EventExecutor;
+import io.netty.util.metrics.MetricsCollector;
 import io.netty.util.concurrent.ExecutorFactory;
 
 import java.nio.channels.Selector;
@@ -97,7 +99,7 @@ public class NioEventLoopGroup extends MultithreadEventLoopGroup {
      * @param selectorProvider  the {@link SelectorProvider} to use. This value must not be {@code null}.
      */
     public NioEventLoopGroup(int nEventLoops, Executor executor, final SelectorProvider selectorProvider) {
-        super(nEventLoops, executor, selectorProvider);
+        this(nEventLoops, executor, null, selectorProvider);
     }
 
     /**
@@ -111,7 +113,33 @@ public class NioEventLoopGroup extends MultithreadEventLoopGroup {
      */
     public NioEventLoopGroup(
             int nEventLoops, ExecutorFactory executorFactory, final SelectorProvider selectorProvider) {
-        super(nEventLoops, executorFactory, selectorProvider);
+        this(nEventLoops, executorFactory, null, selectorProvider);
+    }
+
+    public NioEventLoopGroup(EventLoopChooser chooser) {
+        this(0, chooser);
+    }
+
+    public NioEventLoopGroup(int nEventLoops, EventLoopChooser chooser) {
+        this(nEventLoops, (Executor) null, chooser);
+    }
+
+    public NioEventLoopGroup(int nEventLoops, Executor executor, EventLoopChooser chooser) {
+        this(nEventLoops, executor, chooser, SelectorProvider.provider());
+    }
+
+    public NioEventLoopGroup(int nEventLoops, ExecutorFactory executorFactory, EventLoopChooser chooser) {
+        this(nEventLoops, executorFactory, chooser, SelectorProvider.provider());
+    }
+
+    public NioEventLoopGroup(
+            int nEventLoops, Executor executor, EventLoopChooser chooser, final SelectorProvider selectorProvider) {
+        super(nEventLoops, executor, chooser, selectorProvider);
+    }
+
+    public NioEventLoopGroup(int nEventLoops, ExecutorFactory executorFactory, EventLoopChooser chooser,
+                             final SelectorProvider selectorProvider) {
+        super(nEventLoops, executorFactory, chooser, selectorProvider);
     }
 
     /**
@@ -135,7 +163,7 @@ public class NioEventLoopGroup extends MultithreadEventLoopGroup {
     }
 
     @Override
-    protected EventLoop newChild(Executor executor, Object... args) throws Exception {
-        return new NioEventLoop(this, executor, (SelectorProvider) args[0]);
+    protected EventLoop newChild(Executor executor, MetricsCollector metrics, Object... args) throws Exception {
+        return new NioEventLoop(this, executor, metrics, (SelectorProvider) args[0]);
     }
 }

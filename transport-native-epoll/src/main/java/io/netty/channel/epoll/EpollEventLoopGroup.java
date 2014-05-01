@@ -16,9 +16,11 @@
 package io.netty.channel.epoll;
 
 import io.netty.channel.EventLoop;
+import io.netty.channel.EventLoopChooser;
 import io.netty.channel.EventLoopGroup;
 import io.netty.channel.MultithreadEventLoopGroup;
 import io.netty.util.concurrent.EventExecutor;
+import io.netty.util.metrics.MetricsCollector;
 import io.netty.util.concurrent.ExecutorFactory;
 
 import java.util.concurrent.Executor;
@@ -89,7 +91,7 @@ public final class EpollEventLoopGroup extends MultithreadEventLoopGroup {
      * @param maxEventsAtOnce   the maximum number of epoll events to handle per epollWait(...).
      */
     public EpollEventLoopGroup(int nEventLoops, Executor executor, int maxEventsAtOnce) {
-        super(nEventLoops, executor, maxEventsAtOnce);
+        super(nEventLoops, executor, null, maxEventsAtOnce);
     }
 
     /**
@@ -102,7 +104,24 @@ public final class EpollEventLoopGroup extends MultithreadEventLoopGroup {
      * @param maxEventsAtOnce   the maximum number of epoll events to handle per epollWait(...).
      */
     public EpollEventLoopGroup(int nEventLoops, ExecutorFactory executorFactory, int maxEventsAtOnce) {
-        super(nEventLoops, executorFactory, maxEventsAtOnce);
+        this(nEventLoops, executorFactory, null, maxEventsAtOnce);
+    }
+
+    public EpollEventLoopGroup(EventLoopChooser chooser) {
+        this(0, chooser);
+    }
+
+    public EpollEventLoopGroup(int nEventLoops, EventLoopChooser chooser) {
+        this(nEventLoops, null, chooser);
+    }
+
+    public EpollEventLoopGroup(int nEventLoops, ExecutorFactory executorFactory, EventLoopChooser chooser) {
+        this(nEventLoops, executorFactory, chooser, 128);
+    }
+
+    public EpollEventLoopGroup(
+            int nEventLoops, ExecutorFactory executorFactory, EventLoopChooser chooser, int maxEventsAtOnce) {
+        super(nEventLoops, executorFactory, chooser, maxEventsAtOnce);
     }
 
     /**
@@ -116,7 +135,7 @@ public final class EpollEventLoopGroup extends MultithreadEventLoopGroup {
     }
 
     @Override
-    protected EventLoop newChild(Executor executor, Object... args) throws Exception {
-        return new EpollEventLoop(this, executor, (Integer) args[0]);
+    protected EventLoop newChild(Executor executor, MetricsCollector metrics, Object... args) throws Exception {
+        return new EpollEventLoop(this, executor, metrics, (Integer) args[0]);
     }
 }

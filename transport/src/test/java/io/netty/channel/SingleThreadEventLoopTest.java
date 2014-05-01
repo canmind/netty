@@ -22,6 +22,7 @@ import io.netty.channel.local.LocalChannel;
 import io.netty.util.concurrent.DefaultExecutorFactory;
 import io.netty.util.concurrent.EventExecutor;
 import io.netty.util.concurrent.PausableEventExecutor;
+import io.netty.util.metrics.NoMetricsCollector;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -696,7 +697,7 @@ public class SingleThreadEventLoopTest {
         final AtomicInteger cleanedUp = new AtomicInteger();
 
         SingleThreadEventLoopA() {
-            super(null, new DefaultExecutorFactory("A").newExecutor(1), true);
+            super(null, new DefaultExecutorFactory("A").newExecutor(1), NoMetricsCollector.INSTANCE, true);
         }
 
         @Override
@@ -726,7 +727,7 @@ public class SingleThreadEventLoopTest {
         private volatile boolean interrupted;
 
         SingleThreadEventLoopB() {
-            super(null, new DefaultExecutorFactory("B").newExecutor(1), false);
+            super(null, new DefaultExecutorFactory("B").newExecutor(1), NoMetricsCollector.INSTANCE, false);
         }
 
         @Override

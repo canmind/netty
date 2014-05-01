@@ -17,6 +17,7 @@
 package io.netty.channel;
 
 import io.netty.util.concurrent.EventExecutor;
+import io.netty.util.metrics.MetricsCollector;
 
 /**
  * Will handle all the I/O-Operations for a {@link Channel} once it was registered.
@@ -37,4 +38,6 @@ public interface EventLoop extends EventExecutor, EventLoopGroup {
      * invoke event handler methods.
      */
     ChannelHandlerInvoker asInvoker();
+
+    MetricsCollector metrics();
 }

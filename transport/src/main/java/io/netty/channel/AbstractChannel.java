@@ -23,6 +23,7 @@ import io.netty.util.internal.OneTimeTask;
 import io.netty.util.internal.PlatformDependent;
 import io.netty.util.internal.logging.InternalLogger;
 import io.netty.util.internal.logging.InternalLoggerFactory;
+import io.netty.util.metrics.MetricsCollector;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -972,6 +973,11 @@ public abstract class AbstractChannel extends DefaultAttributeMap implements Cha
         @Override
         public ChannelHandlerInvoker asInvoker() {
             return this;
+        }
+
+        @Override
+        public MetricsCollector metrics() {
+            return unwrapped.metrics();
         }
 
         @Override
