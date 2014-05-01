@@ -22,6 +22,7 @@ import io.netty.channel.epoll.AbstractEpollChannel.AbstractEpollUnsafe;
 import io.netty.util.internal.PlatformDependent;
 import io.netty.util.internal.logging.InternalLogger;
 import io.netty.util.internal.logging.InternalLoggerFactory;
+import io.netty.util.metrics.MetricsCollector;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -61,8 +62,8 @@ final class EpollEventLoop extends SingleThreadEventLoop {
     private volatile int wakenUp;
     private volatile int ioRatio = 50;
 
-    EpollEventLoop(EventLoopGroup parent, Executor executor, int maxEvents) {
-        super(parent, executor, false);
+    EpollEventLoop(EventLoopGroup parent, Executor executor, MetricsCollector metrics, int maxEvents) {
+        super(parent, executor, metrics, false);
         events = new long[maxEvents];
         boolean success = false;
         int epollFd = -1;
