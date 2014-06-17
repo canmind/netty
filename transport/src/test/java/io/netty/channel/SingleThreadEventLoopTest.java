@@ -445,16 +445,16 @@ public class SingleThreadEventLoopTest {
 
         @Override
         protected void run() {
-            for (;;) {
-                Runnable task = takeTask();
-                if (task != null) {
-                    task.run();
-                    updateLastExecutionTime();
-                }
+            Runnable task = takeTask();
+            if (task != null) {
+                task.run();
+                updateLastExecutionTime();
+            }
 
-                if (confirmShutdown()) {
-                    break;
-                }
+            if (confirmShutdown()) {
+                cleanupAndTerminate(true);
+            } else {
+                executeRun();
             }
         }
 
@@ -472,18 +472,18 @@ public class SingleThreadEventLoopTest {
 
         @Override
         protected void run() {
-            for (;;) {
-                try {
-                    Thread.sleep(TimeUnit.NANOSECONDS.toMillis(delayNanos(System.nanoTime())));
-                } catch (InterruptedException e) {
-                    // Waken up by interruptThread()
-                }
+            try {
+                Thread.sleep(TimeUnit.NANOSECONDS.toMillis(delayNanos(System.nanoTime())));
+            } catch (InterruptedException e) {
+                // Waken up by interruptThread()
+            }
 
-                runAllTasks();
+            runAllTasks();
 
-                if (confirmShutdown()) {
-                    break;
-                }
+            if (confirmShutdown()) {
+                cleanupAndTerminate(true);
+            } else {
+                executeRun();
             }
         }
 

@@ -15,8 +15,9 @@
  */
 package io.netty.channel;
 
+import io.netty.util.concurrent.ExecutorFactory;
+
 import java.util.concurrent.Executor;
-import java.util.concurrent.ThreadFactory;
 
 /**
  * {@link MultithreadEventLoopGroup} which must be used for the local transport.
@@ -33,20 +34,24 @@ public class DefaultEventLoopGroup extends MultithreadEventLoopGroup {
     /**
      * Create a new instance
      *
-     * @param nThreads          the number of threads to use
+     * @param nEventLoops   the number of {@link EventLoop}s to use.
      */
-    public DefaultEventLoopGroup(int nThreads) {
-        this(nThreads, null);
+    public DefaultEventLoopGroup(int nEventLoops) {
+        this(nEventLoops, (Executor) null);
     }
 
     /**
      * Create a new instance
      *
-     * @param nThreads          the number of threads to use
-     * @param threadFactory     the {@link ThreadFactory} or {@code null} to use the default
+     * @param nEventLoops   the number of {@link EventLoop}s ({@link #children}) that will be used by this instance.
+     * @param executor      the Executor to use, or {@code null} if the default should be used.
      */
-    public DefaultEventLoopGroup(int nThreads, ThreadFactory threadFactory) {
-        super(nThreads, threadFactory);
+    public DefaultEventLoopGroup(int nEventLoops, Executor executor) {
+        super(nEventLoops, executor);
+    }
+
+    public DefaultEventLoopGroup(int nEventLoops, ExecutorFactory executorFactory) {
+        super(nEventLoops, executorFactory);
     }
 
     @Override

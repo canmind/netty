@@ -48,16 +48,16 @@ public class DefaultEventLoop extends SingleThreadEventLoop {
 
     @Override
     protected void run() {
-        for (;;) {
-            Runnable task = takeTask();
-            if (task != null) {
-                task.run();
-                updateLastExecutionTime();
-            }
+        Runnable task = takeTask();
+        if (task != null) {
+            task.run();
+            updateLastExecutionTime();
+        }
 
-            if (confirmShutdown()) {
-                break;
-            }
+        if (confirmShutdown()) {
+            cleanupAndTerminate(true);
+        } else {
+            executeRun();
         }
     }
 }

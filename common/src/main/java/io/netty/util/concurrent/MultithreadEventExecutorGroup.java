@@ -19,7 +19,6 @@ import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.Set;
 import java.util.concurrent.Executor;
-import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -36,41 +35,35 @@ public abstract class MultithreadEventExecutorGroup extends AbstractEventExecuto
     private final Promise<?> terminationFuture = new DefaultPromise(GlobalEventExecutor.INSTANCE);
     private final EventExecutorChooser chooser;
 
-    /**
-     * Create a new instance.
-     *
-     * @param nThreads          the number of threads that will be used by this instance.
-     * @param threadFactory     the ThreadFactory to use, or {@code null} if the default should be used.
-     * @param args              arguments which will passed to each {@link #newChild(Executor, Object...)} call
-     */
-    protected MultithreadEventExecutorGroup(int nThreads, ThreadFactory threadFactory, Object... args) {
-        this(nThreads, threadFactory == null ? null : new ThreadPerTaskExecutor(threadFactory), args);
+    protected MultithreadEventExecutorGroup(int nEventExecutors, ExecutorFactory executorFactory, Object... args) {
+        this(nEventExecutors, executorFactory == null ? null : executorFactory.newExecutor(nEventExecutors), args);
     }
 
     /**
      * Create a new instance.
      *
      * @param nThreads          the number of threads that will be used by this instance.
-     * @param executor          the Executor to use, or {@code null} if the default should be used.
-     * @param args              arguments which will passed to each {@link #newChild(Executor, Object...)} call
+     * @param executor            the Executor to use, or {@code null} if the default should be used.
+     * @param args                 arguments which will passed to each {@link #newChild(Executor, Object...)} call
      */
-    protected MultithreadEventExecutorGroup(int nThreads, Executor executor, Object... args) {
-        if (nThreads <= 0) {
-            throw new IllegalArgumentException(String.format("nThreads: %d (expected: > 0)", nThreads));
+    protected MultithreadEventExecutorGroup(int nEventExecutors, Executor executor, Object... args) {
+        if (nEventExecutors <= 0) {
+            throw new IllegalArgumentException(
+                    String.format("nEventExecutors: %d (expected: > 0)", nEventExecutors));
         }
 
         if (executor == null) {
-            executor = new ThreadPerTaskExecutor(newDefaultThreadFactory());
+            executor = newDefaultExecutor(nEventExecutors);
         }
 
-        children = new EventExecutor[nThreads];
+        children = new EventExecutor[nEventExecutors];
         if (isPowerOfTwo(children.length)) {
             chooser = new PowerOfTwoEventExecutorChooser();
         } else {
             chooser = new GenericEventExecutorChooser();
         }
 
-        for (int i = 0; i < nThreads; i ++) {
+        for (int i = 0; i < nEventExecutors; i ++) {
             boolean success = false;
             try {
                 children[i] = newChild(executor, args);
@@ -118,8 +111,8 @@ public abstract class MultithreadEventExecutorGroup extends AbstractEventExecuto
         readonlyChildren = Collections.unmodifiableSet(childrenSet);
     }
 
-    protected ThreadFactory newDefaultThreadFactory() {
-        return new DefaultThreadFactory(getClass());
+    protected Executor newDefaultExecutor(int nEventExecutors) {
+        return new DefaultExecutorFactory(getClass()).newExecutor(nEventExecutors);
     }
 
     @Override
