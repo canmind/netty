@@ -24,12 +24,12 @@ import io.netty.util.internal.PlatformDependent;
 import io.netty.util.internal.logging.InternalLogger;
 import io.netty.util.internal.logging.InternalLoggerFactory;
 
-import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.nio.channels.ClosedChannelException;
 import java.nio.channels.NotYetConnectedException;
 import java.util.concurrent.RejectedExecutionException;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * A skeletal {@link Channel} implementation.
@@ -59,7 +59,7 @@ public abstract class AbstractChannel extends DefaultAttributeMap implements Cha
 
     private volatile SocketAddress localAddress;
     private volatile SocketAddress remoteAddress;
-    private volatile EventLoop eventLoop;
+    private volatile PausableChannelEventLoop eventLoop;
     private volatile boolean registered;
 
     /** Cache for the string representation of this channel */
@@ -119,7 +119,7 @@ public abstract class AbstractChannel extends DefaultAttributeMap implements Cha
     }
 
     @Override
-    public EventLoop eventLoop() {
+    public final EventLoop eventLoop() {
         EventLoop eventLoop = this.eventLoop;
         if (eventLoop == null) {
             throw new IllegalStateException("channel not registered to an event loop");
@@ -401,7 +401,8 @@ public abstract class AbstractChannel extends DefaultAttributeMap implements Cha
 
         @Override
         public final ChannelHandlerInvoker invoker() {
-            return eventLoop().asInvoker();
+            // return the unwrapped invoker.
+            return ((PausableChannelEventLoop) eventLoop().asInvoker()).unwrapInvoker();
         }
 
         @Override
@@ -424,6 +425,9 @@ public abstract class AbstractChannel extends DefaultAttributeMap implements Cha
             if (eventLoop == null) {
                 throw new NullPointerException("eventLoop");
             }
+            if (promise == null) {
+                throw new NullPointerException("promise");
+            }
             if (isRegistered()) {
                 promise.setFailure(new IllegalStateException("registered to an event loop already"));
                 return;
@@ -434,7 +438,13 @@ public abstract class AbstractChannel extends DefaultAttributeMap implements Cha
                 return;
             }
 
-            AbstractChannel.this.eventLoop = eventLoop;
+            // It's necessary to reuse the wrapped eventloop object. Otherwise the user will end up with multiple
+            // objects that do not share a common state.
+            if (AbstractChannel.this.eventLoop == null) {
+                AbstractChannel.this.eventLoop = new PausableChannelEventLoop(eventLoop, AbstractChannel.this);
+            } else {
+                AbstractChannel.this.eventLoop.unwrapped = eventLoop;
+            }
 
             if (eventLoop.inEventLoop()) {
                 register0(promise);
@@ -466,6 +476,7 @@ public abstract class AbstractChannel extends DefaultAttributeMap implements Cha
                 }
                 doRegister();
                 registered = true;
+                AbstractChannel.this.eventLoop.acceptNewTasks();
                 safeSetSuccess(promise);
                 pipeline.fireChannelRegistered();
                 if (isActive()) {
@@ -597,7 +608,12 @@ public abstract class AbstractChannel extends DefaultAttributeMap implements Cha
                     });
                 }
 
-                deregister(voidPromise());
+                invokeLater(new OneTimeTask() {
+                    @Override
+                    public void run() {
+                        deregister(voidPromise());
+                    }
+                });
             }
         }
 
@@ -610,8 +626,17 @@ public abstract class AbstractChannel extends DefaultAttributeMap implements Cha
             }
         }
 
+        /**
+         * This method must NEVER be called directly, but be executed as an
+         * extra task with a clean call stack instead. The reason for this
+         * is that this method calls {@link ChannelPipeline#fireChannelUnregistered()}
+         * directly, which might lead to an unfortunate nesting of independent inbound/outbound
+         * events. See the comments in {@link #invokeLater(Runnable)} for more details.
+         */
         @Override
         public final void deregister(final ChannelPromise promise) {
+            assert cleanCallStack();
+
             if (!promise.setUncancellable()) {
                 return;
             }
@@ -624,17 +649,13 @@ public abstract class AbstractChannel extends DefaultAttributeMap implements Cha
             try {
                 doDeregister();
             } catch (Throwable t) {
+                safeSetFailure(promise, t);
                 logger.warn("Unexpected exception occurred while deregistering a channel.", t);
             } finally {
                 if (registered) {
                     registered = false;
-                    invokeLater(new OneTimeTask() {
-                        @Override
-                        public void run() {
-                            pipeline.fireChannelUnregistered();
-                        }
-                    });
                     safeSetSuccess(promise);
+                    pipeline.fireChannelUnregistered();
                 } else {
                     // Some transports like local and AIO does not allow the deregistration of
                     // an open channel.  Their doDeregister() calls close().  Consequently,
@@ -642,6 +663,15 @@ public abstract class AbstractChannel extends DefaultAttributeMap implements Cha
                     safeSetSuccess(promise);
                 }
             }
+        }
+
+        private boolean cleanCallStack() {
+            StackTraceElement[] callStack = new Exception().getStackTrace();
+
+            return callStack.length > 3 &&
+                    "cleanCallStack".equals(callStack[0].getMethodName()) &&
+                    "deregister".equals(callStack[1].getMethodName()) &&
+                    "run".equals(callStack[2].getMethodName());
         }
 
         @Override
@@ -792,7 +822,7 @@ public abstract class AbstractChannel extends DefaultAttributeMap implements Cha
                 //         -> handlerA.channelInactive() - (2) another inbound handler method called while in (1) yet
                 //
                 // which means the execution of two inbound handler methods of the same handler overlap undesirably.
-                eventLoop().execute(task);
+                eventLoop().unwrap().execute(task);
             } catch (RejectedExecutionException e) {
                 logger.warn("Can't invoke task later as EventLoop rejected it", e);
             }
@@ -893,6 +923,74 @@ public abstract class AbstractChannel extends DefaultAttributeMap implements Cha
 
         boolean setClosed() {
             return super.trySuccess();
+        }
+    }
+
+    private static final class PausableChannelEventLoop
+            extends PausableChannelEventExecutor implements EventLoop {
+
+        final AtomicBoolean rejectNewTasks = new AtomicBoolean(false);
+        volatile EventLoop unwrapped;
+        final Channel channel;
+
+        PausableChannelEventLoop(EventLoop unwrapped, Channel channel) {
+            this.unwrapped = unwrapped;
+            this.channel = channel;
+        }
+
+        @Override
+        public void rejectNewTasks() {
+            rejectNewTasks.set(true);
+        }
+
+        @Override
+        public void acceptNewTasks() {
+            rejectNewTasks.set(false);
+        }
+
+        @Override
+        public boolean isRejecting() {
+            return rejectNewTasks.get();
+        }
+
+        @Override
+        public EventLoopGroup parent() {
+            return unwrap().parent();
+        }
+
+        @Override
+        public EventLoop next() {
+            return unwrap().next();
+        }
+
+        @Override
+        public EventLoop unwrap() {
+            return unwrapped;
+        }
+
+        @Override
+        public ChannelHandlerInvoker asInvoker() {
+            return this;
+        }
+
+        @Override
+        public ChannelFuture register(Channel channel) {
+            return unwrap().register(channel);
+        }
+
+        @Override
+        public ChannelFuture register(Channel channel, ChannelPromise promise) {
+            return unwrap().register(channel, promise);
+        }
+
+        @Override
+        Channel channel() {
+            return channel;
+        }
+
+        @Override
+        ChannelHandlerInvoker unwrapInvoker() {
+            return unwrapped.asInvoker();
         }
     }
 }

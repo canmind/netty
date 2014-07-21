@@ -19,6 +19,8 @@ import io.netty.channel.Channel.Unsafe;
 import io.netty.util.ReferenceCountUtil;
 import io.netty.util.concurrent.EventExecutor;
 import io.netty.util.concurrent.EventExecutorGroup;
+import io.netty.util.concurrent.PausableEventExecutor;
+import io.netty.util.internal.OneTimeTask;
 import io.netty.util.internal.PlatformDependent;
 import io.netty.util.internal.StringUtil;
 import io.netty.util.internal.logging.InternalLogger;
@@ -1188,8 +1190,35 @@ final class DefaultChannelPipeline implements ChannelPipeline {
         }
 
         @Override
-        public void deregister(ChannelHandlerContext ctx, ChannelPromise promise) throws Exception {
-            unsafe.deregister(promise);
+        public void deregister(ChannelHandlerContext ctx, final ChannelPromise promise) throws Exception {
+            /**
+             * One problem of channel deregistration is that after a channel has been deregistered
+             * there may still be tasks, created from within one of the channel's ChannelHandlers,
+             * in the eventloop's task queue. That way, an unfortunate twist of events could lead
+             * to tasks still being in the old eventloop's queue even after the channel has been
+             * registered with a new eventloop. This would lead to the tasks being executed by two
+             * different eventloops.
+             *
+             * Our solution to this problem is to always perform the actual deregistration of
+             * the channel as a task and to reject any submission of new tasks, from within
+             * one of the channel's ChannelHandlers, until the channel is registered with
+             * another eventloop. That way we can be sure that there are no more tasks regarding
+             * that particular channel after it has been deregistered (because the deregistration
+             * task is the last one.).
+             *
+             * This only works for one time tasks. To see how we handle periodic/delayed tasks have a look
+             * at {@link io.netty.util.concurrent.ScheduledFutureTask#run()}.
+             */
+            ctx.channel().eventLoop().execute(new OneTimeTask() {
+                @Override
+                public void run() {
+                    unsafe.deregister(promise);
+                }
+            });
+
+            // Reject any new tasks
+            PausableEventExecutor pausableExecutor = (PausableEventExecutor) ctx.channel().eventLoop();
+            pausableExecutor.rejectNewTasks();
         }
 
         @Override
