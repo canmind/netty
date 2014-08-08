@@ -596,9 +596,9 @@ public class SingleThreadEventLoopTest {
             }, 100, 200, TimeUnit.MILLISECONDS);
         }
 
-        assertFalse(((PausableEventExecutor) channel.eventLoop()).isRejecting());
+        assertTrue(((PausableEventExecutor) channel.eventLoop()).isAcceptingNewTasks());
         ChannelFuture deregisterFuture = channel.deregister();
-        assertTrue(((PausableEventExecutor) channel.eventLoop()).isRejecting());
+        assertFalse(((PausableEventExecutor) channel.eventLoop()).isAcceptingNewTasks());
 
         assertTrue(deregisterFuture.sync().isSuccess());
 
@@ -608,11 +608,11 @@ public class SingleThreadEventLoopTest {
         // no scheduled tasks must be executed after deregistration.
         assertTrue("size: " + timestamps.size(), timestamps.isEmpty());
 
-        assertTrue(((PausableEventExecutor) channel.eventLoop()).isRejecting());
+        assertFalse(((PausableEventExecutor) channel.eventLoop()).isAcceptingNewTasks());
         registerPromise = channel.newPromise();
         channel.unsafe().register(loop2,  registerPromise);
         assertTrue(registerPromise.sync().isSuccess());
-        assertFalse(((PausableEventExecutor) channel.eventLoop()).isRejecting());
+        assertTrue(((PausableEventExecutor) channel.eventLoop()).isAcceptingNewTasks());
 
         assertThat(channel.eventLoop(), instanceOf(PausableEventExecutor.class));
         assertSame(loop2, channel.eventLoop().unwrap());
@@ -668,9 +668,9 @@ public class SingleThreadEventLoopTest {
             }
         }, 1, TimeUnit.SECONDS);
 
-        assertFalse(((PausableEventExecutor) channel.eventLoop()).isRejecting());
+        assertTrue(((PausableEventExecutor) channel.eventLoop()).isAcceptingNewTasks());
         ChannelFuture deregisterFuture = channel.deregister();
-        assertTrue(((PausableEventExecutor) channel.eventLoop()).isRejecting());
+        assertFalse(((PausableEventExecutor) channel.eventLoop()).isAcceptingNewTasks());
 
         assertTrue(deregisterFuture.sync().isSuccess());
 

@@ -94,8 +94,8 @@ final class DefaultChannelHandlerContext extends AbstractChannelHandlerContext {
         }
 
         @Override
-        public boolean isRejecting() {
-            return ((PausableEventExecutor) channel().eventLoop()).isRejecting();
+        public boolean isAcceptingNewTasks() {
+            return ((PausableEventExecutor) channel().eventLoop()).isAcceptingNewTasks();
         }
 
         @Override

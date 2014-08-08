@@ -35,7 +35,7 @@ public interface PausableEventExecutor extends EventExecutor, WrappedEventExecut
     void acceptNewTasks();
 
     /**
-     * @return  whether the {@link EventExecutor} is accepting new work or not.
+     * Returns {@code true} if and only if this {@link EventExecutor} is accepting a new task.
      */
-    boolean isRejecting();
+    boolean isAcceptingNewTasks();
 }

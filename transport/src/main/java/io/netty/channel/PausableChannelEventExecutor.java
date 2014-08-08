@@ -211,7 +211,7 @@ abstract class PausableChannelEventExecutor implements PausableEventExecutor, Ch
 
     @Override
     public Future<?> submit(Runnable task) {
-        if (isRejecting()) {
+        if (!isAcceptingNewTasks()) {
             throw new RejectedExecutionException();
         }
         return unwrap().submit(task);
@@ -219,7 +219,7 @@ abstract class PausableChannelEventExecutor implements PausableEventExecutor, Ch
 
     @Override
     public <T> Future<T> submit(Runnable task, T result) {
-        if (isRejecting()) {
+        if (!isAcceptingNewTasks()) {
             throw new RejectedExecutionException();
         }
         return unwrap().submit(task, result);
@@ -227,7 +227,7 @@ abstract class PausableChannelEventExecutor implements PausableEventExecutor, Ch
 
     @Override
     public <T> Future<T> submit(Callable<T> task) {
-        if (isRejecting()) {
+        if (!isAcceptingNewTasks()) {
             throw new RejectedExecutionException();
         }
         return unwrap().submit(task);
@@ -235,7 +235,7 @@ abstract class PausableChannelEventExecutor implements PausableEventExecutor, Ch
 
     @Override
     public ScheduledFuture<?> schedule(Runnable command, long delay, TimeUnit unit) {
-        if (isRejecting()) {
+        if (!isAcceptingNewTasks()) {
             throw new RejectedExecutionException();
         }
 
@@ -244,7 +244,7 @@ abstract class PausableChannelEventExecutor implements PausableEventExecutor, Ch
 
     @Override
     public <V> ScheduledFuture<V> schedule(Callable<V> callable, long delay, TimeUnit unit) {
-        if (isRejecting()) {
+        if (!isAcceptingNewTasks()) {
             throw new RejectedExecutionException();
         }
         return unwrap().schedule(new ChannelCallableEventExecutor<V>(channel(), callable), delay, unit);
@@ -252,7 +252,7 @@ abstract class PausableChannelEventExecutor implements PausableEventExecutor, Ch
 
     @Override
     public ScheduledFuture<?> scheduleAtFixedRate(Runnable command, long initialDelay, long period, TimeUnit unit) {
-        if (isRejecting()) {
+        if (!isAcceptingNewTasks()) {
             throw new RejectedExecutionException();
         }
         return unwrap().scheduleAtFixedRate(
@@ -261,7 +261,7 @@ abstract class PausableChannelEventExecutor implements PausableEventExecutor, Ch
 
     @Override
     public ScheduledFuture<?> scheduleWithFixedDelay(Runnable command, long initialDelay, long delay, TimeUnit unit) {
-        if (isRejecting()) {
+        if (!isAcceptingNewTasks()) {
             throw new RejectedExecutionException();
         }
         return unwrap().scheduleWithFixedDelay(
@@ -286,7 +286,7 @@ abstract class PausableChannelEventExecutor implements PausableEventExecutor, Ch
     @Override
     public <T> List<java.util.concurrent.Future<T>>
     invokeAll(Collection<? extends Callable<T>> tasks) throws InterruptedException {
-        if (isRejecting()) {
+        if (!isAcceptingNewTasks()) {
             throw new RejectedExecutionException();
         }
         return unwrap().invokeAll(tasks);
@@ -295,7 +295,7 @@ abstract class PausableChannelEventExecutor implements PausableEventExecutor, Ch
     @Override
     public <T> List<java.util.concurrent.Future<T>>
     invokeAll(Collection<? extends Callable<T>> tasks, long timeout, TimeUnit unit) throws InterruptedException {
-        if (isRejecting()) {
+        if (!isAcceptingNewTasks()) {
             throw new RejectedExecutionException();
         }
         return unwrap().invokeAll(tasks, timeout, unit);
@@ -303,7 +303,7 @@ abstract class PausableChannelEventExecutor implements PausableEventExecutor, Ch
 
     @Override
     public <T> T invokeAny(Collection<? extends Callable<T>> tasks) throws InterruptedException, ExecutionException {
-        if (isRejecting()) {
+        if (!isAcceptingNewTasks()) {
             throw new RejectedExecutionException();
         }
         return unwrap().invokeAny(tasks);
@@ -312,7 +312,7 @@ abstract class PausableChannelEventExecutor implements PausableEventExecutor, Ch
     @Override
     public <T> T invokeAny(Collection<? extends Callable<T>> tasks, long timeout, TimeUnit unit)
             throws InterruptedException, ExecutionException, TimeoutException {
-        if (isRejecting()) {
+        if (!isAcceptingNewTasks()) {
             throw new RejectedExecutionException();
         }
         return unwrap().invokeAny(tasks, timeout, unit);
@@ -320,7 +320,7 @@ abstract class PausableChannelEventExecutor implements PausableEventExecutor, Ch
 
     @Override
     public void execute(Runnable command) {
-        if (isRejecting()) {
+        if (!isAcceptingNewTasks()) {
             throw new RejectedExecutionException();
         }
         unwrap().execute(command);

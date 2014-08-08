@@ -441,7 +441,7 @@ public abstract class AbstractChannel extends DefaultAttributeMap implements Cha
             // It's necessary to reuse the wrapped eventloop object. Otherwise the user will end up with multiple
             // objects that do not share a common state.
             if (AbstractChannel.this.eventLoop == null) {
-                AbstractChannel.this.eventLoop = new PausableChannelEventLoop(eventLoop, AbstractChannel.this);
+                AbstractChannel.this.eventLoop = new PausableChannelEventLoop(eventLoop);
             } else {
                 AbstractChannel.this.eventLoop.unwrapped = eventLoop;
             }
@@ -926,31 +926,29 @@ public abstract class AbstractChannel extends DefaultAttributeMap implements Cha
         }
     }
 
-    private static final class PausableChannelEventLoop
+    private final class PausableChannelEventLoop
             extends PausableChannelEventExecutor implements EventLoop {
 
-        final AtomicBoolean rejectNewTasks = new AtomicBoolean(false);
+        final AtomicBoolean isAcceptingNewTasks = new AtomicBoolean(true);
         volatile EventLoop unwrapped;
-        final Channel channel;
 
-        PausableChannelEventLoop(EventLoop unwrapped, Channel channel) {
+        PausableChannelEventLoop(EventLoop unwrapped) {
             this.unwrapped = unwrapped;
-            this.channel = channel;
         }
 
         @Override
         public void rejectNewTasks() {
-            rejectNewTasks.set(true);
+            isAcceptingNewTasks.set(false);
         }
 
         @Override
         public void acceptNewTasks() {
-            rejectNewTasks.set(false);
+            isAcceptingNewTasks.set(true);
         }
 
         @Override
-        public boolean isRejecting() {
-            return rejectNewTasks.get();
+        public boolean isAcceptingNewTasks() {
+            return isAcceptingNewTasks.get();
         }
 
         @Override
@@ -985,7 +983,7 @@ public abstract class AbstractChannel extends DefaultAttributeMap implements Cha
 
         @Override
         Channel channel() {
-            return channel;
+            return AbstractChannel.this;
         }
 
         @Override

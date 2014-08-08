@@ -169,7 +169,7 @@ final class ScheduledFutureTask<V> extends PromiseTask<V> implements ScheduledFu
     private boolean skipExecution() {
         return task instanceof CallableEventExecutorAdapter &&
                 ((CallableEventExecutorAdapter) task).executor() instanceof PausableEventExecutor &&
-                ((PausableEventExecutor) ((CallableEventExecutorAdapter) task).executor()).isRejecting();
+                !((PausableEventExecutor) ((CallableEventExecutorAdapter) task).executor()).isAcceptingNewTasks();
     }
 
     private boolean migrateToNewExecutor() {
