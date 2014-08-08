@@ -302,7 +302,7 @@ public interface Channel extends AttributeMap, Comparable<Channel> {
      * Please note that all of the above only applies to tasks created from within the deregistered {@link Channel}'s
      * {@link ChannelHandler}s.
      * <p>
-     * It's only save to {@link EventLoop#register(Channel)} the {@link Channel} with another (or the same)
+     * It's only safe to {@linkplain EventLoop#register(Channel)} the {@link Channel} with another (or the same)
      * {@link EventLoop} after the {@link ChannelFuture} has completed.
      */
     ChannelFuture deregister();
@@ -400,7 +400,7 @@ public interface Channel extends AttributeMap, Comparable<Channel> {
      * Please note that all of the above only applies to tasks created from within the deregistered {@link Channel}'s
      * {@link ChannelHandler}s.
      * <p>
-     * It's only save to {@link EventLoop#register(Channel)} the {@link Channel} with another (or the same)
+     * It's only safe to {@linkplain EventLoop#register(Channel)} the {@link Channel} with another (or the same)
      * {@link EventLoop} after the {@link ChannelPromise} has completed.
      */
     ChannelFuture deregister(ChannelPromise promise);

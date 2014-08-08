@@ -198,6 +198,27 @@ public abstract class AbstractChannel extends DefaultAttributeMap implements Cha
 
     @Override
     public ChannelFuture deregister() {
+        /**
+         * One problem of channel deregistration is that after a channel has been deregistered
+         * there may still be tasks, created from within one of the channel's ChannelHandlers,
+         * in the {@link EventLoop}'s task queue. That way, an unfortunate twist of events could lead
+         * to tasks still being in the old {@link EventLoop}'s queue even after the channel has been
+         * registered with a new {@link EventLoop}. This would lead to the tasks being executed by two
+         * different {@link EventLoop}s.
+         *
+         * Our solution to this problem is to always perform the actual deregistration of
+         * the channel as a task and to reject any submission of new tasks, from within
+         * one of the channel's ChannelHandlers, until the channel is registered with
+         * another {@link EventLoop}. That way we can be sure that there are no more tasks regarding
+         * that particular channel after it has been deregistered (because the deregistration
+         * task is the last one.).
+         *
+         * This only works for one time tasks. To see how we handle periodic/delayed tasks have a look
+         * at {@link io.netty.util.concurrent.ScheduledFutureTask#run()}.
+         *
+         * Also see {@link HeadContext#deregister(ChannelHandlerContext, ChannelPromise)}.
+         */
+        eventLoop.rejectNewTasks();
         return pipeline.deregister();
     }
 
@@ -234,6 +255,7 @@ public abstract class AbstractChannel extends DefaultAttributeMap implements Cha
 
     @Override
     public ChannelFuture deregister(ChannelPromise promise) {
+        eventLoop.rejectNewTasks();
         return pipeline.deregister(promise);
     }
 
@@ -598,22 +620,22 @@ public abstract class AbstractChannel extends DefaultAttributeMap implements Cha
                 outboundBuffer.failFlushed(CLOSED_CHANNEL_EXCEPTION);
                 outboundBuffer.close(CLOSED_CHANNEL_EXCEPTION);
             } finally {
-
                 if (wasActive && !isActive()) {
                     invokeLater(new OneTimeTask() {
                         @Override
                         public void run() {
                             pipeline.fireChannelInactive();
+                            deregister(voidPromise());
+                        }
+                    });
+                } else {
+                    invokeLater(new OneTimeTask() {
+                        @Override
+                        public void run() {
+                            deregister(voidPromise());
                         }
                     });
                 }
-
-                invokeLater(new OneTimeTask() {
-                    @Override
-                    public void run() {
-                        deregister(voidPromise());
-                    }
-                });
             }
         }
 
@@ -635,8 +657,6 @@ public abstract class AbstractChannel extends DefaultAttributeMap implements Cha
          */
         @Override
         public final void deregister(final ChannelPromise promise) {
-            assert cleanCallStack();
-
             if (!promise.setUncancellable()) {
                 return;
             }
@@ -663,15 +683,6 @@ public abstract class AbstractChannel extends DefaultAttributeMap implements Cha
                     safeSetSuccess(promise);
                 }
             }
-        }
-
-        private boolean cleanCallStack() {
-            StackTraceElement[] callStack = new Exception().getStackTrace();
-
-            return callStack.length > 3 &&
-                    "cleanCallStack".equals(callStack[0].getMethodName()) &&
-                    "deregister".equals(callStack[1].getMethodName()) &&
-                    "run".equals(callStack[2].getMethodName());
         }
 
         @Override

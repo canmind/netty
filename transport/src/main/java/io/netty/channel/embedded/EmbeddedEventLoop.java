@@ -190,7 +190,7 @@ final class EmbeddedEventLoop extends AbstractEventLoop implements ChannelHandle
     }
 
     @Override
-    public void invokeDeregister(final ChannelHandlerContext ctx, final ChannelPromise promise) {
+    public void invokeDeregister(ChannelHandlerContext ctx, final ChannelPromise promise) {
         invokeDeregisterNow(ctx, promise);
     }
 
