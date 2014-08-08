@@ -16,6 +16,7 @@
 
 package io.netty.util.concurrent;
 
+import io.netty.util.internal.InternalThreadLocalMap;
 import io.netty.util.internal.StringUtil;
 import io.netty.util.internal.chmv8.ForkJoinPool;
 import io.netty.util.internal.chmv8.ForkJoinPool.ForkJoinWorkerThreadFactory;
@@ -97,8 +98,9 @@ public final class DefaultExecutorFactory implements ExecutorFactory {
 
         @Override
         public void uncaughtException(Thread t, Throwable e) {
-            // TODO: Think about what makes sense here
-            logger.error("Uncaught Exception in thread " + t.getName(), e);
+            if (logger.isErrorEnabled()) {
+                logger.error("Uncaught exception in thread: {}", t.getName(), e);
+            }
         }
     }
 
@@ -113,17 +115,33 @@ public final class DefaultExecutorFactory implements ExecutorFactory {
 
         @Override
         public ForkJoinWorkerThread newThread(ForkJoinPool pool) {
+            // Note: The ForkJoinPool will create these threads as daemon threads.
             ForkJoinWorkerThread thread = new DefaultForkJoinWorkerThread(pool);
             thread.setName(namePrefix + "-" + idx.getAndIncrement());
-            thread.setDaemon(false);
             thread.setPriority(Thread.MAX_PRIORITY);
             return thread;
         }
 
-        static class DefaultForkJoinWorkerThread extends ForkJoinWorkerThread {
-            DefaultForkJoinWorkerThread(ForkJoinPool pool) {
-                super(pool);
-            }
+
+    }
+
+    private static final class DefaultForkJoinWorkerThread
+            extends ForkJoinWorkerThread implements FastThreadLocalAccess {
+
+        private InternalThreadLocalMap threadLocalMap;
+
+        DefaultForkJoinWorkerThread(ForkJoinPool pool) {
+            super(pool);
+        }
+
+        @Override
+        public InternalThreadLocalMap threadLocalMap() {
+            return threadLocalMap;
+        }
+
+        @Override
+        public void setThreadLocalMap(InternalThreadLocalMap threadLocalMap) {
+            this.threadLocalMap = threadLocalMap;
         }
     }
 }
