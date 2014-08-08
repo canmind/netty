@@ -212,7 +212,7 @@ public class LocalChannelTest {
                         if (confirmShutdown()) {
                             cleanupAndTerminate(true);
                         } else {
-                            executeRun();
+                            scheduleExecution();
                         }
                     }
                 };

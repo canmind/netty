@@ -287,7 +287,7 @@ final class EpollEventLoop extends SingleThreadEventLoop {
             }
         }
 
-        executeRun();
+        scheduleExecution();
     }
 
     private void closeAll() {

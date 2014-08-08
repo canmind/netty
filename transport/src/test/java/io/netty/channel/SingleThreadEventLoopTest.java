@@ -710,7 +710,7 @@ public class SingleThreadEventLoopTest {
             if (confirmShutdown()) {
                 cleanupAndTerminate(true);
             } else {
-                executeRun();
+                scheduleExecution();
             }
         }
 
@@ -748,7 +748,7 @@ public class SingleThreadEventLoopTest {
             if (confirmShutdown()) {
                 cleanupAndTerminate(true);
             } else {
-                executeRun();
+                scheduleExecution();
             }
         }
 

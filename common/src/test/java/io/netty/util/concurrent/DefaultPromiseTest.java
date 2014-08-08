@@ -191,7 +191,7 @@ public class DefaultPromiseTest {
             if (confirmShutdown()) {
                 cleanupAndTerminate(true);
             } else {
-                executeRun();
+                scheduleExecution();
             }
         }
     }

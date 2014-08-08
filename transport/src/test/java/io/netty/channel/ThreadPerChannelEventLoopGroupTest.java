@@ -106,7 +106,7 @@ public class ThreadPerChannelEventLoopGroupTest {
             if (confirmShutdown()) {
                 cleanupAndTerminate(true);
             } else {
-                executeRun();
+                scheduleExecution();
             }
         }
     }

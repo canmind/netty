@@ -50,7 +50,7 @@ public final class DefaultEventExecutor extends SingleThreadEventExecutor {
         if (confirmShutdown()) {
             cleanupAndTerminate(true);
         } else {
-            executeRun();
+            scheduleExecution();
         }
     }
 }

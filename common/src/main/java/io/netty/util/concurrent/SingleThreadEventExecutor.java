@@ -62,6 +62,8 @@ public abstract class SingleThreadEventExecutor extends AbstractEventExecutor {
 
     private static final AtomicIntegerFieldUpdater<SingleThreadEventExecutor> STATE_UPDATER;
 
+    private static final long threadOffset;
+
     static {
         AtomicIntegerFieldUpdater<SingleThreadEventExecutor> updater =
                 PlatformDependent.newAtomicIntegerFieldUpdater(SingleThreadEventExecutor.class, "state");
@@ -69,11 +71,19 @@ public abstract class SingleThreadEventExecutor extends AbstractEventExecutor {
             updater = AtomicIntegerFieldUpdater.newUpdater(SingleThreadEventExecutor.class, "state");
         }
         STATE_UPDATER = updater;
+
+        try {
+            threadOffset =
+                    PlatformDependent.objectFieldOffset(SingleThreadEventExecutor.class.getDeclaredField("thread"));
+        } catch (NoSuchFieldException e) {
+            throw new RuntimeException();
+        }
     }
 
     private final Queue<Runnable> taskQueue;
     final Queue<ScheduledFutureTask<?>> delayedTaskQueue = new PriorityQueue<ScheduledFutureTask<?>>();
 
+    @SuppressWarnings({ "FieldMayBeFinal", "unused" })
     private volatile Thread thread;
     private final Executor executor;
     private final Semaphore threadLock = new Semaphore(0);
@@ -97,7 +107,7 @@ public abstract class SingleThreadEventExecutor extends AbstractEventExecutor {
     private final Runnable AS_RUNNABLE = new Runnable() {
         @Override
         public void run() {
-            thread = Thread.currentThread();
+            updateThread(Thread.currentThread());
 
             if (firstRun) {
                 firstRun = false;
@@ -512,7 +522,7 @@ public abstract class SingleThreadEventExecutor extends AbstractEventExecutor {
         gracefulShutdownTimeout = unit.toNanos(timeout);
 
         if (oldState == ST_NOT_STARTED) {
-            executeRun();
+            scheduleExecution();
         }
 
         if (wakeup) {
@@ -564,7 +574,7 @@ public abstract class SingleThreadEventExecutor extends AbstractEventExecutor {
         }
 
         if (oldState == ST_NOT_STARTED) {
-            executeRun();
+            scheduleExecution();
         }
 
         if (wakeup) {
@@ -857,14 +867,18 @@ public abstract class SingleThreadEventExecutor extends AbstractEventExecutor {
                 delayedTaskQueue.add(new ScheduledFutureTask<Void>(
                         this, delayedTaskQueue, Executors.<Void>callable(new PurgeTask(), null),
                         ScheduledFutureTask.deadlineNanos(SCHEDULE_PURGE_INTERVAL), -SCHEDULE_PURGE_INTERVAL));
-                executeRun();
+                scheduleExecution();
             }
         }
     }
 
-    protected void executeRun() {
-        thread = null;
+    protected final void scheduleExecution() {
+        updateThread(null);
         executor.execute(AS_RUNNABLE);
+    }
+
+    private void updateThread(Thread t) {
+        PlatformDependent.putOrderedObject(this, threadOffset, t);
     }
 
     private final class PurgeTask implements Runnable {

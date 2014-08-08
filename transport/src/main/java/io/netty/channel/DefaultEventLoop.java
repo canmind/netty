@@ -47,7 +47,7 @@ public class DefaultEventLoop extends SingleThreadEventLoop {
         if (confirmShutdown()) {
             cleanupAndTerminate(true);
         } else {
-            executeRun();
+            scheduleExecution();
         }
     }
 }

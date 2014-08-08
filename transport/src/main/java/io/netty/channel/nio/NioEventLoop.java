@@ -373,7 +373,7 @@ public final class NioEventLoop extends SingleThreadEventLoop {
             }
         }
 
-        executeRun();
+        scheduleExecution();
     }
 
     private void processSelectedKeys() {
