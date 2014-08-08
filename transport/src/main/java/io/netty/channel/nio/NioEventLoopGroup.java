@@ -48,10 +48,10 @@ public class NioEventLoopGroup extends MultithreadEventLoopGroup {
      *
      * @see DefaultExecutorFactory
      *
-     * @param nEventLoops       the number of {@link EventLoop}s that will be used by this instance.
-     *                             If {@code executor} is {@code null} this number will also be the parallelism
-     *                             requested from the default executor. It is generally advised for the number
-     *                             of {@link EventLoop}s and the number of {@link Thread}s used by the
+     * @param nEventLoops   the number of {@link EventLoop}s that will be used by this instance.
+     *                        If {@code executor} is {@code null} this number will also be the parallelism
+     *                        requested from the default executor. It is generally advised for the number
+     *                        of {@link EventLoop}s and the number of {@link Thread}s used by the
      */
     public NioEventLoopGroup(int nEventLoops) {
         this(nEventLoops, (Executor) null);
@@ -61,12 +61,12 @@ public class NioEventLoopGroup extends MultithreadEventLoopGroup {
      * Create a new instance that uses the the {@link SelectorProvider} which is returned by
      * {@link SelectorProvider#provider()}.
      *
-     * @param nEventLoops       the number of {@link EventLoop}s that will be used by this instance.
-     *                             If {@code executor} is {@code null} this number will also be the parallelism
-     *                             requested from the default executor. It is generally advised for the number
-     *                             of {@link EventLoop}s and the number of {@link Thread}s used by the
-     *                             {@code executor} to lie very close together.
-     * @param executor           the {@link Executor} to use, or {@code null} if the default should be used.
+     * @param nEventLoops   the number of {@link EventLoop}s that will be used by this instance.
+     *                        If {@code executor} is {@code null} this number will also be the parallelism
+     *                        requested from the default executor. It is generally advised for the number
+     *                        of {@link EventLoop}s and the number of {@link Thread}s used by the
+     *                        {@code executor} to lie very close together.
+     * @param executor   the {@link Executor} to use, or {@code null} if the default should be used.
      */
     public NioEventLoopGroup(int nEventLoops, Executor executor) {
         this(nEventLoops, executor, SelectorProvider.provider());
@@ -76,11 +76,11 @@ public class NioEventLoopGroup extends MultithreadEventLoopGroup {
      * Create a new instance that uses the the {@link SelectorProvider} which is returned by
      * {@link SelectorProvider#provider()}.
      *
-     * @param nEventLoops       the number of {@link EventLoop}s that will be used by this instance.
-     *                             If {@code executor} is {@code null} this number will also be the parallelism
-     *                             requested from the default executor. It is generally advised for the number
-     *                             of {@link EventLoop}s and the number of {@link Thread}s used by the
-     *                             {@code executor} to lie very close together.
+     * @param nEventLoops   the number of {@link EventLoop}s that will be used by this instance.
+     *                        If {@code executor} is {@code null} this number will also be the parallelism
+     *                        requested from the default executor. It is generally advised for the number
+     *                        of {@link EventLoop}s and the number of {@link Thread}s used by the
+     *                        {@code executor} to lie very close together.
      * @param executorFactory   the {@link ExecutorFactory} to use, or {@code null} if the default should be used.
      */
     public NioEventLoopGroup(int nEventLoops, ExecutorFactory executorFactory) {
@@ -88,12 +88,12 @@ public class NioEventLoopGroup extends MultithreadEventLoopGroup {
     }
 
     /**
-     * @param nEventLoops       the number of {@link EventLoop}s that will be used by this instance.
-     *                             If {@code executor} is {@code null} this number will also be the parallelism
-     *                             requested from the default executor. It is generally advised for the number
-     *                             of {@link EventLoop}s and the number of {@link Thread}s used by the
-     *                             {@code executor} to lie very close together.
-     * @param executor           the {@link Executor} to use, or {@code null} if the default should be used.
+     * @param nEventLoops   the number of {@link EventLoop}s that will be used by this instance.
+     *                        If {@code executor} is {@code null} this number will also be the parallelism
+     *                        requested from the default executor. It is generally advised for the number
+     *                        of {@link EventLoop}s and the number of {@link Thread}s used by the
+     *                        {@code executor} to lie very close together.
+     * @param executor  the {@link Executor} to use, or {@code null} if the default should be used.
      * @param selectorProvider  the {@link SelectorProvider} to use. This value must not be {@code null}.
      */
     public NioEventLoopGroup(int nEventLoops, Executor executor, final SelectorProvider selectorProvider) {
@@ -101,11 +101,11 @@ public class NioEventLoopGroup extends MultithreadEventLoopGroup {
     }
 
     /**
-     * @param nEventLoops       the number of {@link EventLoop}s that will be used by this instance.
-     *                             If {@code executor} is {@code null} this number will also be the parallelism
-     *                             requested from the default executor. It is generally advised for the number
-     *                             of {@link EventLoop}s and the number of {@link Thread}s used by the
-     *                             {@code executor} to lie very close together.
+     * @param nEventLoops   the number of {@link EventLoop}s that will be used by this instance.
+     *                        If {@code executor} is {@code null} this number will also be the parallelism
+     *                        requested from the default executor. It is generally advised for the number
+     *                        of {@link EventLoop}s and the number of {@link Thread}s used by the
+     *                        {@code executor} to lie very close together.
      * @param executorFactory   the {@link ExecutorFactory} to use, or {@code null} if the default should be used.
      * @param selectorProvider  the {@link SelectorProvider} to use. This value must not be {@code null}.
      */

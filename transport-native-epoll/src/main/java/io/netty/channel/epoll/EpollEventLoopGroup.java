@@ -46,33 +46,33 @@ public final class EpollEventLoopGroup extends MultithreadEventLoopGroup {
      *
      * @see DefaultExecutorFactory
      *
-     * @param nEventLoops       the number of {@link EventLoop}s that will be used by this instance.
-     *                             If {@code executor} is {@code null} this number will also be the parallelism
-     *                             requested from the default executor. It is generally advised for the number
-     *                             of {@link EventLoop}s and the number of {@link Thread}s used by the
+     * @param nEventLoops   the number of {@link EventLoop}s that will be used by this instance.
+     *                        If {@code executor} is {@code null} this number will also be the parallelism
+     *                        requested from the default executor. It is generally advised for the number
+     *                        of {@link EventLoop}s and the number of {@link Thread}s used by the
      */
     public EpollEventLoopGroup(int nEventLoops) {
         this(nEventLoops, (Executor) null);
     }
 
     /**
-     * @param nEventLoops       the number of {@link EventLoop}s that will be used by this instance.
-     *                             If {@code executor} is {@code null} this number will also be the parallelism
-     *                             requested from the default executor. It is generally advised for the number
-     *                             of {@link EventLoop}s and the number of {@link Thread}s used by the
-     *                             {@code executor} to lie very close together.
-     * @param executor           the {@link Executor} to use, or {@code null} if the default should be used.
+     * @param nEventLoops   the number of {@link EventLoop}s that will be used by this instance.
+     *                        If {@code executor} is {@code null} this number will also be the parallelism
+     *                        requested from the default executor. It is generally advised for the number
+     *                        of {@link EventLoop}s and the number of {@link Thread}s used by the
+     *                        {@code executor} to lie very close together.
+     * @param executor      the {@link Executor} to use, or {@code null} if the default should be used.
      */
     public EpollEventLoopGroup(int nEventLoops, Executor executor) {
         this(nEventLoops, executor, 128);
     }
 
     /**
-     * @param nEventLoops       the number of {@link EventLoop}s that will be used by this instance.
-     *                             If {@code executor} is {@code null} this number will also be the parallelism
-     *                             requested from the default executor. It is generally advised for the number
-     *                             of {@link EventLoop}s and the number of {@link Thread}s used by the
-     *                             {@code executor} to lie very close together.
+     * @param nEventLoops   the number of {@link EventLoop}s that will be used by this instance.
+     *                        If {@code executor} is {@code null} this number will also be the parallelism
+     *                        requested from the default executor. It is generally advised for the number
+     *                        of {@link EventLoop}s and the number of {@link Thread}s used by the
+     *                        {@code executor} to lie very close together.
      * @param executorFactory   the {@link ExecutorFactory} to use, or {@code null} if the default should be used.
      */
     public EpollEventLoopGroup(int nEventLoops, ExecutorFactory executorFactory) {
@@ -80,12 +80,12 @@ public final class EpollEventLoopGroup extends MultithreadEventLoopGroup {
     }
 
     /**
-     * @param nEventLoops       the number of {@link EventLoop}s that will be used by this instance.
-     *                             If {@code executor} is {@code null} this number will also be the parallelism
-     *                             requested from the default executor. It is generally advised for the number
-     *                             of {@link EventLoop}s and the number of {@link Thread}s used by the
-     *                             {@code executor} to lie very close together.
-     * @param executor           the {@link Executor} to use, or {@code null} if the default should be used.
+     * @param nEventLoops   the number of {@link EventLoop}s that will be used by this instance.
+     *                        If {@code executor} is {@code null} this number will also be the parallelism
+     *                        requested from the default executor. It is generally advised for the number
+     *                        of {@link EventLoop}s and the number of {@link Thread}s used by the
+     *                        {@code executor} to lie very close together.
+     * @param executor   the {@link Executor} to use, or {@code null} if the default should be used.
      * @param maxEventsAtOnce   the maximum number of epoll events to handle per epollWait(...).
      */
     public EpollEventLoopGroup(int nEventLoops, Executor executor, int maxEventsAtOnce) {
@@ -93,11 +93,11 @@ public final class EpollEventLoopGroup extends MultithreadEventLoopGroup {
     }
 
     /**
-     * @param nEventLoops       the number of {@link EventLoop}s that will be used by this instance.
-     *                             If {@code executor} is {@code null} this number will also be the parallelism
-     *                             requested from the default executor. It is generally advised for the number
-     *                             of {@link EventLoop}s and the number of {@link Thread}s used by the
-     *                             {@code executor} to lie very close together.
+     * @param nEventLoops   the number of {@link EventLoop}s that will be used by this instance.
+     *                        If {@code executor} is {@code null} this number will also be the parallelism
+     *                        requested from the default executor. It is generally advised for the number
+     *                        of {@link EventLoop}s and the number of {@link Thread}s used by the
+     *                        {@code executor} to lie very close together.
      * @param executorFactory   the {@link ExecutorFactory} to use, or {@code null} if the default should be used.
      * @param maxEventsAtOnce   the maximum number of epoll events to handle per epollWait(...).
      */
