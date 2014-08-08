@@ -103,12 +103,14 @@ public abstract class SingleThreadEventExecutor extends AbstractEventExecutor {
 
     private boolean firstRun = true;
 
-    // TODO: Use a ForkJoinTask here. Saves one object per call to ForkJoinPool.execute(AS_RUNNABLE).
     private final Runnable AS_RUNNABLE = new Runnable() {
         @Override
         public void run() {
             updateThread(Thread.currentThread());
 
+            // This code snippet is needed for the eventloop to
+            // shutdown correctly, in cases where not a single
+            // task was executed.
             if (firstRun) {
                 firstRun = false;
                 updateLastExecutionTime();

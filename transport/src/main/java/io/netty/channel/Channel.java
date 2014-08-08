@@ -484,6 +484,11 @@ public interface Channel extends AttributeMap, Comparable<Channel> {
         /**
          * Register the {@link Channel} of the {@link ChannelPromise} and notify
          * the {@link ChannelFuture} once the registration was complete.
+         * <p>
+         * It's only safe to submit a new task to the {@link EventLoop} from within a
+         * {@link ChannelHandler} once the {@link ChannelPromise} succeeded. Otherwise
+         * the task may or may not be rejected.
+         * </p>
          */
         void register(EventLoop eventLoop, ChannelPromise promise);
 

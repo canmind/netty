@@ -71,7 +71,7 @@ public final class DefaultExecutorFactory implements ExecutorFactory {
         ForkJoinWorkerThreadFactory threadFactory =
                 new DefaultForkJoinWorkerThreadFactory(namePrefix + "-" + executorId.getAndIncrement());
 
-        return new ForkJoinPool(parallelism, threadFactory, new DefaultUncaughtExceptionHandler(), true);
+        return new ForkJoinPool(parallelism, threadFactory, DefaultUncaughtExceptionHandler.INSTANCE, true);
     }
 
     private static String toName(Class<?> clazz) {
@@ -95,6 +95,8 @@ public final class DefaultExecutorFactory implements ExecutorFactory {
     }
 
     private static final class DefaultUncaughtExceptionHandler implements UncaughtExceptionHandler {
+
+        private static final DefaultUncaughtExceptionHandler INSTANCE = new DefaultUncaughtExceptionHandler();
 
         @Override
         public void uncaughtException(Thread t, Throwable e) {
@@ -121,8 +123,6 @@ public final class DefaultExecutorFactory implements ExecutorFactory {
             thread.setPriority(Thread.MAX_PRIORITY);
             return thread;
         }
-
-
     }
 
     private static final class DefaultForkJoinWorkerThread

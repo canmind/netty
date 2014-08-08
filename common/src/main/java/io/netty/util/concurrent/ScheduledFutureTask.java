@@ -113,9 +113,9 @@ final class ScheduledFutureTask<V> extends PromiseTask<V> implements ScheduledFu
         assert !delayedTaskQueue.contains(task);
 
         try {
-            if (migrateToNewExecutor()) {
-                rescheduleWithNewExecutor();
-            } else if (skipExecution()) {
+            if (isMigrationPending()) {
+                scheduleWithNewExecutor();
+            } else if (needsLaterExecution()) {
                 // Treat one time and periodic tasks in the same way: Try again after 10ms.
                 rescheduleTask(TimeUnit.MICROSECONDS.toNanos(10));
             } else {
@@ -166,19 +166,19 @@ final class ScheduledFutureTask<V> extends PromiseTask<V> implements ScheduledFu
         }
     }
 
-    private boolean skipExecution() {
+    private boolean needsLaterExecution() {
         return task instanceof CallableEventExecutorAdapter &&
                 ((CallableEventExecutorAdapter) task).executor() instanceof PausableEventExecutor &&
                 !((PausableEventExecutor) ((CallableEventExecutorAdapter) task).executor()).isAcceptingNewTasks();
     }
 
-    private boolean migrateToNewExecutor() {
+    private boolean isMigrationPending() {
         return !isCancelled() &&
                 task instanceof CallableEventExecutorAdapter &&
                 executor() != ((CallableEventExecutorAdapter) task).executor().unwrap();
     }
 
-    private void rescheduleWithNewExecutor() {
+    private void scheduleWithNewExecutor() {
         EventExecutor newExecutor = ((CallableEventExecutorAdapter) task).executor().unwrap();
 
         if (newExecutor instanceof SingleThreadEventExecutor) {
@@ -195,7 +195,7 @@ final class ScheduledFutureTask<V> extends PromiseTask<V> implements ScheduledFu
                 });
             }
         } else {
-            throw new UnsupportedOperationException("The new executor does not support task migration.");
+            throw new UnsupportedOperationException("task migration unsupported");
         }
     }
 }
