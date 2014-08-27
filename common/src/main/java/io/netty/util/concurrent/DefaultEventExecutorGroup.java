@@ -15,13 +15,17 @@
  */
 package io.netty.util.concurrent;
 
+import io.netty.util.metrics.EventExecutorMetrics;
+import io.netty.util.metrics.NoEventExecutorMetrics;
+
 import java.util.concurrent.Executor;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Default implementation of {@link MultithreadEventExecutorGroup} which will use {@link DefaultEventExecutor}
  * instances to handle the tasks.
  */
-public class DefaultEventExecutorGroup extends MultithreadEventExecutorGroup {
+public class DefaultEventExecutorGroup extends MultithreadEventExecutorGroup<EventExecutor, EventExecutorMetrics> {
 
     /**
      * Create a new instance.
@@ -40,7 +44,7 @@ public class DefaultEventExecutorGroup extends MultithreadEventExecutorGroup {
      *                  this {@link EventExecutorGroup}.
      */
     public DefaultEventExecutorGroup(int nEventExecutors, Executor executor) {
-        super(nEventExecutors, executor);
+        super(nEventExecutors, executor, null, null);
     }
 
     /**
@@ -51,11 +55,31 @@ public class DefaultEventExecutorGroup extends MultithreadEventExecutorGroup {
      *                          executing the work handled by this {@link EventExecutorGroup}.
      */
     public DefaultEventExecutorGroup(int nEventExecutors, ExecutorFactory executorFactory) {
-        super(nEventExecutors, executorFactory);
+        super(nEventExecutors, executorFactory, null, null);
     }
 
     @Override
-    protected EventExecutor newChild(Executor executor, Object... args) throws Exception {
+    protected EventExecutor newChild(Executor executor, EventExecutorMetrics metrics, Object... args) throws Exception {
         return new DefaultEventExecutor(this, executor);
+    }
+
+    protected EventExecutorScheduler<EventExecutor, EventExecutorMetrics> newDefaultScheduler(int nEventExecutors) {
+        return new RoundRobinEventExecutorScheduler();
+    }
+
+    private static final class RoundRobinEventExecutorScheduler
+            extends AbstractEventExecutorScheduler<EventExecutor, EventExecutorMetrics> {
+
+        private final AtomicInteger index = new AtomicInteger();
+
+        @Override
+        public EventExecutor next() {
+            return children.get(index.getAndIncrement() % children.size());
+        }
+
+        @Override
+        public EventExecutorMetrics newMetrics() {
+            return NoEventExecutorMetrics.INSTANCE;
+        }
     }
 }
