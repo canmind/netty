@@ -166,10 +166,6 @@ public class DefaultHttp2ConnectionEncoder implements Http2ConnectionEncoder {
                     throw new IllegalStateException(String.format(
                             "Stream %d in unexpected state: %s", stream.id(), stream.state()));
             }
-
-            if (endOfStream) {
-                lifecycleManager.closeLocalSide(stream, promise);
-            }
         } catch (Throwable e) {
             data.release();
             return promise.setFailure(e);
@@ -219,9 +215,6 @@ public class DefaultHttp2ConnectionEncoder implements Http2ConnectionEncoder {
             flowController().sendFlowControlled(ctx, stream,
                     new FlowControlledHeaders(ctx, stream, headers, streamDependency, weight,
                             exclusive, padding, endOfStream, promise));
-            if (endOfStream) {
-                lifecycleManager.closeLocalSide(stream, promise);
-            }
             return promise;
         } catch (Http2NoMoreStreamIdsException e) {
             lifecycleManager.onException(ctx, e);
@@ -539,6 +532,13 @@ public class DefaultHttp2ConnectionEncoder implements Http2ConnectionEncoder {
             this.stream = stream;
             this.promise = promise;
             promise.addListener(this);
+        }
+
+        @Override
+        public void complete() {
+            if (endOfStream) {
+                lifecycleManager.closeLocalSide(stream, promise);
+            }
         }
 
         @Override

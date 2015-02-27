@@ -53,6 +53,11 @@ public interface Http2RemoteFlowController extends Http2FlowController {
 
         /**
          * Signal an error and release any retained buffers.
+         *<p>
+         * This method might be called multiple times.
+         *<p>
+         * This method might be called even after {@link #complete()} has been called.
+         *
          * @param cause of the error.
          */
         void error(Throwable cause);
@@ -67,5 +72,13 @@ public interface Http2RemoteFlowController extends Http2FlowController {
          * @return {@code true} if a flush is required, {@code false} otherwise.
          */
         boolean write(int allowedBytes);
+
+        /**
+         * This method is called once flow-control is done processing the payload, that is it's called
+         * after the last call to {@link #write(int)} (if any).
+         *<p>
+         * This method is called exactly once.
+         */
+        void complete();
     }
 }

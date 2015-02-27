@@ -23,6 +23,7 @@ import static io.netty.util.internal.ObjectUtil.checkNotNull;
 import static java.lang.Math.max;
 import static java.lang.Math.min;
 import io.netty.channel.ChannelHandlerContext;
+import io.netty.handler.codec.http2.Http2Stream.State;
 
 import java.util.ArrayDeque;
 import java.util.Arrays;
@@ -76,6 +77,27 @@ public class DefaultHttp2RemoteFlowController implements Http2RemoteFlowControll
                 // Any pending frames can never be written, clear and
                 // write errors for any pending frames.
                 state(stream).clear();
+            }
+
+            @Override
+            public void streamHalfClosed(Http2Stream stream) {
+                if (State.HALF_CLOSED_LOCAL.equals(stream.state())) {
+                    /**
+                     * Any pending frames can never be written, clear and
+                     * write errors for any pending frames.
+                     *
+                     * When this method is called there should not be any
+                     * pending frames left if the API is used correctly. However,
+                     * it is possible that a errornous application can sneak
+                     * in a frame even after having already written a frame with the
+                     * END_STREAM flag set, as the stream state might not transition
+                     * immediately to HALF_CLOSED_LOCAL / CLOSED due to flow control
+                     * delaying the write.
+                     *
+                     * This is to cancel any such illegal writes.
+                     */
+                     state(stream).clear();
+                }
             }
 
             @Override
@@ -507,6 +529,7 @@ public class DefaultHttp2RemoteFlowController implements Http2RemoteFlowControll
                 decrementPendingBytes(writtenBytes);
                 if (payload.size() == 0) {
                     pendingWriteQueue.remove();
+                    payload.complete();
                 }
                 return writtenBytes;
             }

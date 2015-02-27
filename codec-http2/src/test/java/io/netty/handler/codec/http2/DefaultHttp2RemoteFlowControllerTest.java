@@ -1061,6 +1061,11 @@ public class DefaultHttp2RemoteFlowControllerTest {
             return true;
         }
 
+        @Override
+        public void complete() {
+            // NOOP
+        }
+
         public void assertNotWritten() {
             assertFalse(writeCalled);
         }

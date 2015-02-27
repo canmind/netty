@@ -18,12 +18,16 @@ import static io.netty.buffer.Unpooled.wrappedBuffer;
 import static io.netty.handler.codec.http2.Http2CodecUtil.DEFAULT_PRIORITY_WEIGHT;
 import static io.netty.handler.codec.http2.Http2CodecUtil.emptyPingBuf;
 import static io.netty.handler.codec.http2.Http2Error.PROTOCOL_ERROR;
+import static io.netty.handler.codec.http2.Http2Error.INTERNAL_ERROR;
 import static io.netty.handler.codec.http2.Http2Stream.State.HALF_CLOSED_LOCAL;
 import static io.netty.handler.codec.http2.Http2Stream.State.IDLE;
 import static io.netty.handler.codec.http2.Http2Stream.State.OPEN;
 import static io.netty.handler.codec.http2.Http2Stream.State.RESERVED_LOCAL;
 import static io.netty.util.CharsetUtil.UTF_8;
+import static org.hamcrest.CoreMatchers.instanceOf;
+import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
@@ -32,6 +36,7 @@ import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyBoolean;
 import static org.mockito.Matchers.anyInt;
 import static org.mockito.Matchers.anyLong;
+import static org.mockito.Matchers.anyShort;
 import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doNothing;
@@ -49,6 +54,8 @@ import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelPromise;
 import io.netty.channel.DefaultChannelPromise;
+import io.netty.handler.codec.http2.Http2Exception.StreamException;
+import io.netty.handler.codec.http2.Http2Stream.State;
 import io.netty.util.concurrent.ImmediateEventExecutor;
 
 import org.junit.Before;
@@ -189,6 +196,24 @@ public class DefaultHttp2ConnectionEncoderTest {
                 return future;
             }
         });
+        when(writer.writeHeaders(eq(ctx), anyInt(), any(Http2Headers.class), anyInt(), anyShort(), anyBoolean(),
+                anyInt(), anyBoolean(), any(ChannelPromise.class)))
+                .then(new Answer<Object>() {
+                    @Override
+                    public Object answer(InvocationOnMock invocationOnMock) throws Throwable {
+                        ChannelPromise receivedPromise = (ChannelPromise) invocationOnMock.getArguments()[8];
+                        if (streamClosed) {
+                            fail("Stream already closed");
+                        } else {
+                            streamClosed = (Boolean) invocationOnMock.getArguments()[5];
+                            if (streamClosed) {
+                                assertSame(promise, receivedPromise);
+                            }
+                        }
+                        receivedPromise.trySuccess();
+                        return future;
+                    }
+                });
         payloadCaptor = ArgumentCaptor.forClass(Http2RemoteFlowController.FlowControlled.class);
         doNothing().when(remoteFlow).sendFlowControlled(eq(ctx), eq(stream), payloadCaptor.capture());
         when(ctx.alloc()).thenReturn(UnpooledByteBufAllocator.DEFAULT);
@@ -228,14 +253,20 @@ public class DefaultHttp2ConnectionEncoderTest {
 
     @Test
     public void dataWriteShouldHalfCloseStream() throws Exception {
-        reset(future);
+        Http2Connection connection = new DefaultHttp2Connection(true);
+        Http2ConnectionEncoder encoder =
+                DefaultHttp2ConnectionEncoder.newBuilder()
+                                             .connection(connection)
+                                             .frameWriter(writer)
+                                             .lifecycleManager(lifecycleManager)
+                                             .build();
+        Http2Stream stream = connection.remote().createStream(STREAM_ID);
+        stream.open(false);
         final ByteBuf data = dummyData();
         encoder.writeData(ctx, STREAM_ID, data, 0, true, promise);
-        assertEquals(1, payloadCaptor.getAllValues().size());
-        // Write the DATA frame completely
-        assertTrue(payloadCaptor.getValue().write(Integer.MAX_VALUE));
         verify(lifecycleManager).closeLocalSide(eq(stream), eq(promise));
         assertEquals(0, data.refCnt());
+        assertEquals(dummyData().toString(UTF_8), writtenData.get(0));
     }
 
     @Test
@@ -346,19 +377,16 @@ public class DefaultHttp2ConnectionEncoderTest {
 
     @Test
     public void headersWriteShouldCreateHalfClosedStream() throws Exception {
-        int streamId = 5;
-        when(stream.id()).thenReturn(streamId);
-        when(stream.state()).thenReturn(IDLE);
-        mockFutureAddListener(true);
-        when(local.createStream(eq(streamId))).thenReturn(stream);
-        when(writer.writeHeaders(eq(ctx), eq(streamId), eq(EmptyHttp2Headers.INSTANCE), eq(0),
-                eq(DEFAULT_PRIORITY_WEIGHT), eq(false), eq(0), eq(true), eq(promise))).thenReturn(future);
-        encoder.writeHeaders(ctx, streamId, EmptyHttp2Headers.INSTANCE, 0, true, promise);
-        verify(local).createStream(eq(streamId));
-        verify(stream).open(eq(true));
-        // Trigger the write and mark the promise successful to trigger listeners
-        payloadCaptor.getValue().write(0);
-        promise.trySuccess();
+        Http2Connection connection = new DefaultHttp2Connection(true);
+        Http2ConnectionEncoder encoder =
+                DefaultHttp2ConnectionEncoder.newBuilder()
+                                             .connection(connection)
+                                             .frameWriter(writer)
+                                             .lifecycleManager(lifecycleManager)
+                                             .build();
+        Http2Stream stream = connection.remote().createStream(STREAM_ID);
+        stream.open(false);
+        encoder.writeHeaders(ctx, STREAM_ID, EmptyHttp2Headers.INSTANCE, 0, true, promise);
         verify(lifecycleManager).closeLocalSide(eq(stream), eq(promise));
     }
 
@@ -377,16 +405,22 @@ public class DefaultHttp2ConnectionEncoderTest {
 
     @Test
     public void headersWriteShouldClosePushStream() throws Exception {
-        mockFutureAddListener(true);
-        when(stream.state()).thenReturn(RESERVED_LOCAL).thenReturn(HALF_CLOSED_LOCAL);
-        when(writer.writeHeaders(eq(ctx), eq(STREAM_ID), eq(EmptyHttp2Headers.INSTANCE), eq(0),
-                eq(DEFAULT_PRIORITY_WEIGHT), eq(false), eq(0), eq(true), eq(promise))).thenReturn(future);
-        encoder.writeHeaders(ctx, STREAM_ID, EmptyHttp2Headers.INSTANCE, 0, true, promise);
-        verify(stream).open(true);
-        // Trigger the write and mark the promise successful to trigger listeners
-        payloadCaptor.getValue().write(0);
-        promise.trySuccess();
-        verify(lifecycleManager).closeLocalSide(eq(stream), eq(promise));
+        Http2Connection connection = new DefaultHttp2Connection(true);
+        Http2ConnectionEncoder encoder =
+                DefaultHttp2ConnectionEncoder.newBuilder()
+                                             .connection(connection)
+                                             .frameWriter(writer)
+                                             .lifecycleManager(lifecycleManager)
+                                             .build();
+
+        when(stream.state()).thenReturn(OPEN);
+        when(stream.localSideOpen()).thenReturn(true);
+        when(stream.remoteSideOpen()).thenReturn(true);
+
+        Http2Stream reservedStream = connection.local().reservePushStream(PUSH_STREAM_ID, stream);
+        assertEquals(RESERVED_LOCAL, reservedStream.state());
+        encoder.writeHeaders(ctx, PUSH_STREAM_ID, EmptyHttp2Headers.INSTANCE, 0, true, promise);
+        verify(lifecycleManager).closeLocalSide(eq(reservedStream), eq(promise));
     }
 
     @Test
@@ -465,6 +499,61 @@ public class DefaultHttp2ConnectionEncoderTest {
         settings.headerTableSize(2000);
         encoder.writeSettings(ctx, settings, promise);
         verify(writer).writeSettings(eq(ctx), eq(settings), eq(promise));
+    }
+
+    /**
+     * Test for issue: https://github.com/netty/netty/pull/3456
+     */
+    @Test
+    public void writeAfterEndOfStreamShouldFail() throws Exception {
+        // Shadowing connection and encoder, because the tests
+        // needs the actual remote flowcontroller implementation.
+        Http2Connection connection = new DefaultHttp2Connection(true);
+        Http2ConnectionEncoder encoder =
+                DefaultHttp2ConnectionEncoder.newBuilder()
+                                             .connection(connection)
+                                             .frameWriter(writer)
+                                             .lifecycleManager(new Http2ConnectionHandler(connection, listener))
+                                             .build();
+        Http2Stream stream = connection.remote().createStream(STREAM_ID);
+
+        // Set stream to HALF_CLOSED_REMOTE
+        stream.open(false).closeRemoteSide();
+        // Set window size to 0
+        int windowSize = encoder.flowController().windowSize(stream);
+        encoder.flowController().incrementWindowSize(ctx, stream, -windowSize);
+
+        assertEquals(0, encoder.flowController().windowSize(stream));
+        assertEquals(State.HALF_CLOSED_REMOTE, stream.state());
+
+        ChannelPromise dataPromise1 = new DefaultChannelPromise(channel, ImmediateEventExecutor.INSTANCE);
+        ChannelPromise dataPromise2 = new DefaultChannelPromise(channel, ImmediateEventExecutor.INSTANCE);
+        ChannelPromise endStreamPromise = new DefaultChannelPromise(channel, ImmediateEventExecutor.INSTANCE);
+
+        // The flow controll window is zero, so the subsequent writes will be buffered until
+        // the window is increased.
+        encoder.writeData(ctx, STREAM_ID, dummyData(), 0, false, dataPromise1);
+        encoder.writeHeaders(ctx, STREAM_ID, EmptyHttp2Headers.INSTANCE, 0, true, endStreamPromise);
+        // This write is not allowed, as the previous header has the END_STREAM flag set.
+        encoder.writeData(ctx, STREAM_ID, dummyData(), 0, false, dataPromise2);
+
+        // State should not have changed, because the DATA and HEADERS frame
+        // should be pending waiting for the window size to be increased.
+        assertEquals(State.HALF_CLOSED_REMOTE, stream.state());
+        assertFalse(dataPromise1.isDone());
+        assertFalse(endStreamPromise.isDone());
+
+        // Increase window size to accomodate enough space for the two data frames.
+        connection.remote().flowController().incrementWindowSize(ctx, stream, dummyData().readableBytes() * 2);
+
+        assertTrue(dataPromise1.isSuccess());
+        assertTrue(endStreamPromise.isSuccess());
+
+        assertTrue(!dataPromise2.isSuccess());
+        assertThat(dataPromise2.cause(), instanceOf(StreamException.class));
+        assertEquals(INTERNAL_ERROR, ((StreamException) dataPromise2.cause()).error());
+
+        assertEquals(State.CLOSED, stream.state());
     }
 
     private void mockFutureAddListener(boolean success) {
