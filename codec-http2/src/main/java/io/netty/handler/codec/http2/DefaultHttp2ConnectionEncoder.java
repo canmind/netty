@@ -16,7 +16,7 @@ package io.netty.handler.codec.http2;
 
 import static io.netty.handler.codec.http2.Http2CodecUtil.DEFAULT_PRIORITY_WEIGHT;
 import static io.netty.handler.codec.http2.Http2Error.PROTOCOL_ERROR;
-import static io.netty.handler.codec.http2.Http2Exception.connectionError;
+import static io.netty.handler.codec.http2.Http2Exception.*;
 import static io.netty.util.internal.ObjectUtil.checkNotNull;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
@@ -38,6 +38,8 @@ public class DefaultHttp2ConnectionEncoder implements Http2ConnectionEncoder {
     // We prefer ArrayDeque to LinkedList because later will produce more GC.
     // This initial capacity is plenty for SETTINGS traffic.
     private final ArrayDeque<Http2Settings> outstandingLocalSettingsQueue = new ArrayDeque<Http2Settings>(4);
+
+    private boolean endOfStreamSent;
 
     /**
      * Builder for new instances of {@link DefaultHttp2ConnectionEncoder}.
@@ -154,6 +156,10 @@ public class DefaultHttp2ConnectionEncoder implements Http2ConnectionEncoder {
                 throw new IllegalStateException("Sending data after connection going away.");
             }
 
+            if (endOfStreamSent) {
+                throw streamError(streamId, Http2Error.STREAM_CLOSED, "Sending headers after stream closed.");
+            }
+
             stream = connection.requireStream(streamId);
 
             // Verify that the stream is in the appropriate state for sending DATA frames.
@@ -166,10 +172,6 @@ public class DefaultHttp2ConnectionEncoder implements Http2ConnectionEncoder {
                     throw new IllegalStateException(String.format(
                             "Stream %d in unexpected state: %s", stream.id(), stream.state()));
             }
-
-            if (endOfStream) {
-                lifecycleManager.closeLocalSide(stream, promise);
-            }
         } catch (Throwable e) {
             data.release();
             return promise.setFailure(e);
@@ -178,6 +180,9 @@ public class DefaultHttp2ConnectionEncoder implements Http2ConnectionEncoder {
         // Hand control of the frame to the flow controller.
         flowController().sendFlowControlled(ctx, stream,
                 new FlowControlledData(ctx, stream, data, padding, endOfStream, promise));
+
+        endOfStreamSent = endOfStream;
+
         return promise;
     }
 
@@ -196,6 +201,11 @@ public class DefaultHttp2ConnectionEncoder implements Http2ConnectionEncoder {
             if (connection.isGoAway()) {
                 throw connectionError(PROTOCOL_ERROR, "Sending headers after connection going away.");
             }
+
+            if (endOfStreamSent) {
+                throw streamError(streamId, Http2Error.STREAM_CLOSED, "Sending headers after stream closed.");
+            }
+
             Http2Stream stream = connection.stream(streamId);
             if (stream == null) {
                 stream = connection.createLocalStream(streamId);
@@ -219,9 +229,9 @@ public class DefaultHttp2ConnectionEncoder implements Http2ConnectionEncoder {
             flowController().sendFlowControlled(ctx, stream,
                     new FlowControlledHeaders(ctx, stream, headers, streamDependency, weight,
                             exclusive, padding, endOfStream, promise));
-            if (endOfStream) {
-                lifecycleManager.closeLocalSide(stream, promise);
-            }
+
+            endOfStreamSent = endOfStream;
+
             return promise;
         } catch (Http2NoMoreStreamIdsException e) {
             lifecycleManager.onException(ctx, e);
@@ -545,6 +555,10 @@ public class DefaultHttp2ConnectionEncoder implements Http2ConnectionEncoder {
         public void operationComplete(ChannelFuture future) throws Exception {
             if (!future.isSuccess()) {
                 error(future.cause());
+            }
+
+            if (endOfStream) {
+                lifecycleManager.closeLocalSide(stream, promise);
             }
         }
     }
